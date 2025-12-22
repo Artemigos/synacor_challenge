@@ -1,5 +1,4 @@
 const std = @import("std");
-const utils = @import("utils.zig");
 
 pub const VM = struct {
     alloc: std.mem.Allocator,
@@ -10,10 +9,20 @@ pub const VM = struct {
     stack: std.ArrayList(u16),
     halted: bool = false,
 
-    pub fn init(alloc: std.mem.Allocator, program_data: []const u16) !VM {
+    reader: *std.io.Reader,
+    writer: *std.io.Writer,
+
+    pub fn init(
+        alloc: std.mem.Allocator,
+        program_data: []const u16,
+        reader: *std.io.Reader,
+        writer: *std.io.Writer,
+    ) !VM {
         var vm: VM = .{
             .alloc = alloc,
             .stack = try std.ArrayList(u16).initCapacity(alloc, 1024),
+            .reader = reader,
+            .writer = writer,
         };
 
         std.debug.assert(vm.memory.len > program_data.len);
@@ -154,12 +163,13 @@ pub const VM = struct {
             },
             19 => {
                 const ascii: u8 = @truncate(try self.get(1));
-                try utils.bufferedPrint("{c}", .{ascii});
+                try self.writer.printAsciiChar(ascii, .{});
+                try self.writer.flush();
                 self.instruction_pointer += 2;
             },
             20 => {
                 var buf: [1]u8 = undefined;
-                const read_len = try std.fs.File.stdin().read(&buf);
+                const read_len = try self.reader.readSliceShort(&buf);
                 if (read_len != 1) {
                     std.log.err("failed to read one character", .{});
                     return error.FailedToReadChar;

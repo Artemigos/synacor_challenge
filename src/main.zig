@@ -6,8 +6,14 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const alloc = gpa.allocator();
 
+    var in_buf: [64]u8 = undefined;
+    var stdin = std.fs.File.stdin().reader(&in_buf);
+
+    var out_buf: [64]u8 = undefined;
+    var stdout = std.fs.File.stdout().writer(&out_buf);
+
     var program_data = try fetchRom(alloc);
-    var vm = try VM.init(alloc, program_data.items);
+    var vm = try VM.init(alloc, program_data.items, &stdin.interface, &stdout.interface);
     defer vm.deinit();
     program_data.deinit(alloc);
 
