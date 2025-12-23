@@ -10,6 +10,7 @@ pub fn main() !void {
     var program_data = try fetchRom(alloc, args.rom_path);
     defer program_data.deinit(alloc);
 
+    // var runner = @import("SearchingRunner.zig").init(alloc, program_data.items);
     var runner = @import("StdioRunner.zig").init(alloc, program_data.items);
     defer runner.deinit();
 
