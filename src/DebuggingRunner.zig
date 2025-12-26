@@ -10,16 +10,11 @@ path: ?[]const u8 = null,
 server: ?std.net.Server = null,
 connection: ?std.net.Server.Connection = null,
 
-input_buf: [1024 * 1024]u8 = undefined,
-input_reader: std.io.Reader = std.io.Reader.fixed(&[0]u8{}),
-
 pub fn init(alloc: std.mem.Allocator, program_data: []u16) Self {
-    var result: Self = .{
+    return .{
         .alloc = alloc,
         .program_data = program_data,
     };
-    result.input_reader.buffer = &result.input_buf;
-    return result;
 }
 
 pub fn deinit(self: *Self) void {
@@ -46,13 +41,16 @@ pub fn startSocket(self: *Self, path: []const u8) !void {
 }
 
 pub fn run(self: *Self) !void {
+    var input_buf: [1024 * 1024]u8 = @splat(0);
+    var input_reader: std.io.Reader = std.io.Reader.fixed(&input_buf);
+
     var out_buf: [64]u8 = undefined;
     var stdout = std.fs.File.stdout().writer(&out_buf);
 
     var vm = try VM.init(
         self.alloc,
         self.program_data,
-        &self.input_reader,
+        &input_reader,
         &stdout.interface,
     );
     defer vm.deinit();
@@ -80,8 +78,20 @@ pub fn run(self: *Self) !void {
             }
         } else if (std.mem.eql(u8, line, "c")) {
             while (!vm.halted) {
+                if (input_reader.end > 0 and input_reader.seek == input_reader.end) {
+                    try self.print("seeded input used completely\n", .{});
+                    input_reader.seek = 0;
+                    input_reader.end = 0;
+                    break;
+                }
                 try vm.step();
             }
+        } else if (line.len >= 6 and std.mem.eql(u8, line[0..5], "seed ")) {
+            const file = line[5..];
+            const as_slice = try std.fs.cwd().readFile(file, &input_buf);
+            try self.print("seeded input with {} bytes\n", .{as_slice.len});
+            input_reader.seek = 0;
+            input_reader.end = as_slice.len;
         } else {
             try self.print("unknown command\n", .{});
         }
