@@ -91,6 +91,11 @@ pub fn run(self: *Self) !void {
             try self.print("seeded input with {} bytes\n", .{as_slice.len});
             input_reader.seek = 0;
             input_reader.end = as_slice.len;
+        } else if (line.len >= 4 and std.mem.eql(u8, line[0..3], "s7 ")) {
+            const val_str = line[3..];
+            const val = try std.fmt.parseInt(u16, val_str, 10);
+            vm.registers[7] = val;
+            try self.print("set reg7 to {}\n", .{val});
         } else {
             try self.print("unknown command\n", .{});
         }
