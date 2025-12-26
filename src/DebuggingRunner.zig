@@ -57,15 +57,14 @@ pub fn run(self: *Self) !void {
     try self.waitForDebugger();
 
     var conn = self.connection.?;
-    try self.printHeadsUp(&vm);
     var buf: [128]u8 = undefined;
     var reader = conn.stream.reader(&buf);
     const iface = reader.interface();
 
+    try self.printHeadsUp(&vm);
     while (try iface.takeDelimiter('\n')) |line| {
         if (line.len == 0) {
             try vm.step();
-            try self.printHeadsUp(&vm);
         } else if (std.mem.eql(u8, line, "reg")) {
             for (vm.registers, 0..) |val, i| {
                 try self.print("reg{}: {}\n", .{ i, val });
@@ -95,6 +94,7 @@ pub fn run(self: *Self) !void {
         } else {
             try self.print("unknown command\n", .{});
         }
+        try self.printHeadsUp(&vm);
     }
 }
 
@@ -111,7 +111,7 @@ pub fn waitForDebugger(self: *Self) !void {
 fn printHeadsUp(self: *Self, vm: *VM) !void {
     const next_instruction = vm.peekInstruction();
     const instruction_name = std.enums.tagName(@TypeOf(next_instruction), next_instruction);
-    try self.print("next: {s}\n", .{instruction_name.?});
+    try self.print("next: {s} ; ip: {}\n", .{ instruction_name.?, vm.instruction_pointer });
 }
 
 pub fn print(self: *Self, comptime fmt: []const u8, args: anytype) !void {
