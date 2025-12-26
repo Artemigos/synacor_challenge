@@ -10,6 +10,14 @@ pub fn main() !void {
     var program_data = try fetchRom(alloc, args.rom_path);
     defer program_data.deinit(alloc);
 
+    if (args.disassembly_output) |out| {
+        var out_buf: [64]u8 = undefined;
+        const file = try std.fs.cwd().createFile(out, .{});
+        defer file.close();
+        var writer = file.writer(&out_buf);
+        try @import("Disassembler.zig").disassemble(program_data.items, &writer.interface);
+    }
+
     if (args.socket_path) |socket| {
         var runner = @import("DebuggingRunner.zig").init(alloc, program_data.items);
         defer runner.deinit();
@@ -25,16 +33,27 @@ pub fn main() !void {
 
 const Params = struct {
     rom_path: [:0]const u8,
-    socket_path: ?[:0]const u8,
+    socket_path: ?[:0]const u8 = null,
+    disassembly_output: ?[:0]const u8 = null,
 };
 
 fn parseArgs() !Params {
+    var params: Params = undefined;
     var args = std.process.args();
     _ = args.next().?;
-    return .{
-        .rom_path = args.next() orelse return error.RomArgMissing,
-        .socket_path = args.next(),
-    };
+    params.rom_path = args.next() orelse return error.RomArgMissing;
+
+    while (args.next()) |arg| {
+        if (std.mem.eql(u8, arg, "-d")) {
+            params.socket_path = args.next().?;
+        } else if (std.mem.eql(u8, arg, "-o")) {
+            params.disassembly_output = args.next().?;
+        } else {
+            return error.UnexpectedArg;
+        }
+    }
+
+    return params;
 }
 
 fn fetchRom(alloc: std.mem.Allocator, path: [:0]const u8) !std.ArrayList(u16) {
