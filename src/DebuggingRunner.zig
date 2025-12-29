@@ -61,6 +61,8 @@ pub fn run(self: *Self) !void {
     var reader = conn.stream.reader(&buf);
     const iface = reader.interface();
 
+    var breakpoint: usize = 0;
+
     try self.printHeadsUp(&vm);
     while (try iface.takeDelimiter('\n')) |line| {
         if (line.len == 0) {
@@ -84,6 +86,9 @@ pub fn run(self: *Self) !void {
                     break;
                 }
                 try vm.step();
+                if (vm.instruction_pointer == breakpoint) {
+                    break;
+                }
             }
         } else if (line.len >= 6 and std.mem.eql(u8, line[0..5], "seed ")) {
             const file = line[5..];
@@ -97,6 +102,9 @@ pub fn run(self: *Self) !void {
             const val = try std.fmt.parseInt(u16, val_str, 10);
             vm.registers[reg] = val;
             try self.print("set reg{} to {}\n", .{ reg, val });
+        } else if (line.len > 2 and line[0] == 'b' and line[1] == ' ') {
+            const addr_str = line[2..];
+            breakpoint = try std.fmt.parseInt(usize, addr_str, 10);
         } else {
             try self.print("unknown command\n", .{});
         }
