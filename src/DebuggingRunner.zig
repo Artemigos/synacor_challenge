@@ -91,11 +91,12 @@ pub fn run(self: *Self) !void {
             try self.print("seeded input with {} bytes\n", .{as_slice.len});
             input_reader.seek = 0;
             input_reader.end = as_slice.len;
-        } else if (line.len >= 4 and std.mem.eql(u8, line[0..3], "s7 ")) {
+        } else if (line.len >= 4 and line[0] == 's' and line[2] == ' ' and line[1] >= '0' and line[1] <= '7') {
+            const reg = line[1] - '0';
             const val_str = line[3..];
             const val = try std.fmt.parseInt(u16, val_str, 10);
-            vm.registers[7] = val;
-            try self.print("set reg7 to {}\n", .{val});
+            vm.registers[reg] = val;
+            try self.print("set reg{} to {}\n", .{ reg, val });
         } else {
             try self.print("unknown command\n", .{});
         }
