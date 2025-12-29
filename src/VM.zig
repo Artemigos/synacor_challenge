@@ -62,6 +62,17 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn step(self: *Self) !void {
+    // after self-test, set last register to valid value
+    if (self.instruction_pointer == 546) {
+        self.registers[7] = 25734;
+    }
+
+    // bypass teleporter calculations
+    if (self.instruction_pointer == 5511) {
+        self.instruction_pointer += 2; // jump over call
+        self.registers[0] = 6; // expected valid result of call
+    }
+
     const instruction = self.memory[self.instruction_pointer];
     switch (instruction) {
         0 => {
