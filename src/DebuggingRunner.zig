@@ -105,6 +105,10 @@ pub fn run(self: *Self) !void {
         } else if (line.len > 2 and line[0] == 'b' and line[1] == ' ') {
             const addr_str = line[2..];
             breakpoint = try std.fmt.parseInt(usize, addr_str, 10);
+        } else if (line.len > 3 and std.mem.eql(u8, line[0..3], "ip ")) {
+            const offset_str = line[3..];
+            const offset = try std.fmt.parseInt(u15, offset_str, 10);
+            vm.instruction_pointer += offset;
         } else {
             try self.print("unknown command\n", .{});
         }
